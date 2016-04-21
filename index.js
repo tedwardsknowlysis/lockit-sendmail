@@ -2,7 +2,7 @@
 
 var nodemailer = require('nodemailer');
 var ejs = require('ejs');
-
+var merge = require('merge');
 
 
 /**
@@ -29,7 +29,7 @@ var Email = module.exports = function(config) {
  * @param {String} email
  * @param {Function} done
  */
-Email.prototype.send = function(type, username, email, done) {
+Email.prototype.send = function(type, username, email, done, variables, opts) {
   var config = this.config;
   var that = this;
 
@@ -43,9 +43,14 @@ Email.prototype.send = function(type, username, email, done) {
     // default local variables
     var locals = {
       appname: config.appname,
-      link: that.link,
       username: username
     };
+    if (that.link) {
+      locals.link = that.link;
+    }
+    if (variables) {
+      locals = merge(true, variables, locals);
+    }
 
     // add options
     var options = {
@@ -54,6 +59,9 @@ Email.prototype.send = function(type, username, email, done) {
       subject: ejs.render(subject, locals),
       html: ejs.render(html, locals)
     };
+    if (opts) {
+      options = merge(true, options, opts);
+    }
 
     // send email with nodemailer
     var transporter = nodemailer.createTransport(that.transport(config.emailSettings));
@@ -125,4 +133,17 @@ Email.prototype.forgot = function(username, email, token, done) {
   var c = this.config;
   this.link = '<a href="' + c.url + c.forgotPassword.route + '/' + token + '">' + c.emailForgotPassword.linkText + '</a>';
   this.send('emailForgotPassword', username, email, done);
+};
+
+/**
+ * Send email with list of emails/usernames for forgotten login
+ *
+ * @param {String} username
+ * @param {String} email
+ * @param {Array{String}} logins
+ * @param {Function} done
+ */
+Email.prototype.forgotLogin = function(name, email, logins, done) {
+  var c = this.config;
+  this.send('emailForgotLogin', name, email, done, {logins: logins, host: c.url});
 };
